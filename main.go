@@ -2,10 +2,14 @@ package main
 
 import (
 	"encoding/csv"
+	"flag"
 	"fmt"
 	"golang.org/x/net/html"
+	"golang.org/x/net/publicsuffix"
 	"io"
 	"log"
+	"net/http"
+	"net/http/cookiejar"
 	"os"
 	"strings"
 )
@@ -74,10 +78,71 @@ func findTable(r io.Reader) {
 	}
 }
 
+func getDailyUsage(acct, access string) {
+	// All users of cookiejar should import "golang.org/x/net/publicsuffix"
+	jar, err := cookiejar.New(&cookiejar.Options{PublicSuffixList: publicsuffix.List})
+	if err != nil {
+        log.Fatal(err)
+	}
+
+	client := &http.Client{
+        Jar: jar,
+	}
+
+	url := "https://old.bwsc.org/ACCOUNTS/security_main.asp?AcctNum=%s&MtrNum=%s"
+	url = fmt.Sprintf(url, acct, access)
+	if _, err = client.Get(url); err != nil {
+        log.Fatal(err)
+	}
+
+	var resp *http.Response
+	daily_url := "https://old.bwsc.org/ACCOUNTS/readings_daily_30.asp"
+	if resp, err = client.Get(daily_url); err != nil {
+        log.Fatal(err)
+	}
+	// daily_html, err := ioutil.ReadAll(resp.Body)
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+	findTable(resp.Body)
+	resp.Body.Close()
+}
+
+
 func main() {
-	// fmt.Printf("hello, world\n")
-	// s := `<p>Links:</p><ul><li><a href="foo">Foo</a><li><a href="/bar/baz">BarBaz</a></ul>`
-	// htmlReader := strings.NewReader(s)
+	debugPtr := flag.Bool("debug", false, "Enable debugging")
+	flag.Usage = func() {
+		fmt.Fprintf(flag.CommandLine.Output(),
+			"Usage: %s [flags] ACCOUNT_NUMBER ACCESS_NUMBER\n", os.Args[0])
+		flag.PrintDefaults()
+	}
+	flag.Parse()
+	debug := *debugPtr
+	if debug {
+		fmt.Println("debugging enabled")
+	} else {
+		fmt.Println("debugging disabled")
+	}
+
+	fmt.Println("args:", os.Args)
+	fmt.Println("flag.Args:", flag.Args())
+	if flag.NArg() < 2 {
+		fmt.Println("not enough arguments")
+		flag.Usage()
+		os.Exit(2)
+	}
+	accountNum := flag.Arg(0)
+	accessNum := flag.Arg(1)
+	fmt.Println("accountNum:", accountNum)
+	fmt.Println("accessNum:", accessNum)
+
+
+	// Now retrieve data from bwsc.org
+	getDailyUsage(accountNum, accessNum)
+
+
+	return
+
 	htmlReader, err := os.Open("bwsc-monthly.html")
 	if err != nil {
 		log.Fatal(err)
