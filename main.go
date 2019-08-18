@@ -138,12 +138,12 @@ func main() {
 	// Now retrieve data from bwsc.org
 	getDailyUsage(accountNum, accessNum)
 
-	return
-
-	htmlReader, err := os.Open("bwsc-monthly.html")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer htmlReader.Close()
-	findTable(htmlReader)
+	// Read Monthly usage
+	//
+	// htmlReader, err := os.Open("bwsc-monthly.html")
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+	// defer htmlReader.Close()
+	// findTable(htmlReader)
 }
