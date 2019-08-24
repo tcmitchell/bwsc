@@ -33,7 +33,8 @@ func tdValues(tr_node *html.Node) []string {
 	return result
 }
 
-func findTable(r io.Reader) {
+func findTable(r io.Reader) [][]string {
+	result := make([][]string, 0)
 	doc, err := html.Parse(r)
 	if err != nil {
 		log.Fatal(err)
@@ -41,7 +42,7 @@ func findTable(r io.Reader) {
 	dataTable := findById(doc, "ConsumptionData")
 	if dataTable == nil {
 		// Return an error
-		return
+		return result
 	}
 	// Now dig out the rows of data
 
@@ -50,7 +51,7 @@ func findTable(r io.Reader) {
 	fmt.Printf("Found %d tbody children\n", len(tbodies))
 	if len(tbodies) == 0 {
 		fmt.Println("no tbody found")
-		return
+		return result
 	}
 	tbody := tbodies[0]
 	//then for each tr in tbody, dig out the
@@ -59,26 +60,18 @@ func findTable(r io.Reader) {
 	fmt.Printf("Found %d tr children\n", len(rows))
 	if len(rows) == 0 {
 		fmt.Println("no rows found")
-		return
+		return result
 	}
 
-	csvWriter := csv.NewWriter(os.Stdout)
 	for _, tr := range rows {
 		dataRow := tdValues(tr)
+		result = append(result, dataRow)
 		// fmt.Println("Row: ", dataRow)
-		if err := csvWriter.Write(dataRow); err != nil {
-			log.Fatalln("error writing record to csv:", err)
-		}
 	}
-	// Write any buffered data to the underlying writer (standard output).
-	csvWriter.Flush()
-
-	if err := csvWriter.Error(); err != nil {
-		log.Fatal(err)
-	}
+	return result
 }
 
-func getDailyUsage(acct, access string) {
+func getDailyUsage(acct, access string) [][]string {
 	// All users of cookiejar should import "golang.org/x/net/publicsuffix"
 	jar, err := cookiejar.New(&cookiejar.Options{PublicSuffixList: publicsuffix.List})
 	if err != nil {
@@ -100,12 +93,12 @@ func getDailyUsage(acct, access string) {
 	if resp, err = client.Get(daily_url); err != nil {
 		log.Fatal(err)
 	}
+	defer resp.Body.Close()
 	// daily_html, err := ioutil.ReadAll(resp.Body)
 	// if err != nil {
 	// 	log.Fatal(err)
 	// }
-	findTable(resp.Body)
-	resp.Body.Close()
+	return findTable(resp.Body)
 }
 
 func main() {
@@ -136,7 +129,17 @@ func main() {
 	fmt.Println("accessNum:", accessNum)
 
 	// Now retrieve data from bwsc.org
-	getDailyUsage(accountNum, accessNum)
+	usage := getDailyUsage(accountNum, accessNum)
+
+	csvWriter := csv.NewWriter(os.Stdout)
+	if err := csvWriter.WriteAll(usage); err != nil {
+		log.Fatalln("error writing record to csv:", err)
+	}
+	// Write any buffered data to the underlying writer (standard output).
+	csvWriter.Flush()
+	if err := csvWriter.Error(); err != nil {
+		log.Fatal(err)
+	}
 
 	// Read Monthly usage
 	//
