@@ -82,23 +82,23 @@ func getDailyUsage(acct, access string) {
 	// All users of cookiejar should import "golang.org/x/net/publicsuffix"
 	jar, err := cookiejar.New(&cookiejar.Options{PublicSuffixList: publicsuffix.List})
 	if err != nil {
-        log.Fatal(err)
+		log.Fatal(err)
 	}
 
 	client := &http.Client{
-        Jar: jar,
+		Jar: jar,
 	}
 
 	url := "https://old.bwsc.org/ACCOUNTS/security_main.asp?AcctNum=%s&MtrNum=%s"
 	url = fmt.Sprintf(url, acct, access)
 	if _, err = client.Get(url); err != nil {
-        log.Fatal(err)
+		log.Fatal(err)
 	}
 
 	var resp *http.Response
 	daily_url := "https://old.bwsc.org/ACCOUNTS/readings_daily_30.asp"
 	if resp, err = client.Get(daily_url); err != nil {
-        log.Fatal(err)
+		log.Fatal(err)
 	}
 	// daily_html, err := ioutil.ReadAll(resp.Body)
 	// if err != nil {
@@ -107,7 +107,6 @@ func getDailyUsage(acct, access string) {
 	findTable(resp.Body)
 	resp.Body.Close()
 }
-
 
 func main() {
 	debugPtr := flag.Bool("debug", false, "Enable debugging")
@@ -136,17 +135,15 @@ func main() {
 	fmt.Println("accountNum:", accountNum)
 	fmt.Println("accessNum:", accessNum)
 
-
 	// Now retrieve data from bwsc.org
 	getDailyUsage(accountNum, accessNum)
 
-
-	return
-
-	htmlReader, err := os.Open("bwsc-monthly.html")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer htmlReader.Close()
-	findTable(htmlReader)
+	// Read Monthly usage
+	//
+	// htmlReader, err := os.Open("bwsc-monthly.html")
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+	// defer htmlReader.Close()
+	// findTable(htmlReader)
 }
